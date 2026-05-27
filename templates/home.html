@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ST-MLP Traffic Prediction</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #00f0ff;      /* Cyan */
+            --secondary: #ff00d4;    /* Magenta */
+            --dark-bg: #0a0a12;      /* Deep Dark Blue */
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--dark-bg);
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* --- AMBIENT BACKGROUND --- */
+        .ambient-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; overflow: hidden; }
+        .orb { position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4; }
+        .orb-1 { width: 300px; height: 300px; background: var(--primary); top: -50px; left: -50px; animation: float 10s infinite alternate; }
+        .orb-2 { width: 400px; height: 400px; background: var(--secondary); bottom: -100px; right: -100px; animation: float 15s infinite alternate; }
+        @keyframes float { from { transform: translate(0,0); } to { transform: translate(30px, 30px); } }
+
+        /* --- HEADER --- */
+        .main-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 40px;
+            background: rgba(10, 10, 18, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--glass-border);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .brand { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 700; }
+        .brand span { color: var(--primary); }
+        
+        .btn-glow {
+            text-decoration: none; color: var(--primary); border: 1px solid var(--primary);
+            padding: 8px 25px; border-radius: 50px; transition: 0.3s;
+            font-weight: 500; letter-spacing: 1px;
+        }
+        .btn-glow:hover { background: var(--primary); color: #000; box-shadow: 0 0 20px rgba(0, 240, 255, 0.4); }
+
+        /* --- MAIN CONTAINER --- */
+        .container { max-width: 1100px; margin: 0 auto; padding: 40px 20px; }
+
+        /* --- INTRO TEXT --- */
+        .intro-section { text-align: center; margin: 60px 0; }
+        .intro-title { font-family: 'Syne', sans-serif; font-size: 3.5rem; margin-bottom: 15px; }
+        .intro-sub { color: #888; font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+
+        /* --- MENU GRID --- */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 25px;
+            margin-top: 50px;
+        }
+
+        .menu-item {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 40px 20px;
+            border-radius: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .menu-item:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .menu-icon { font-size: 3rem; margin-bottom: 20px; display: block; }
+        .menu-item h3 { font-family: 'Syne', sans-serif; font-size: 1.5rem; margin-bottom: 10px; color: white; }
+        .menu-item p { color: #aaa; font-size: 0.9rem; }
+
+        /* --- CONTENT SECTIONS (Hidden by default) --- */
+        .content-section {
+            display: none; /* Crucial: Hidden until clicked */
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header { text-align: center; margin-bottom: 40px; }
+        .section-header h2 { font-family: 'Syne'; font-size: 2.5rem; color: var(--primary); }
+        
+        .back-btn {
+            background: transparent; border: none; color: var(--secondary);
+            font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; gap: 10px;
+            margin-bottom: 20px; transition: 0.3s;
+        }
+        .back-btn:hover { transform: translateX(-5px); color: white; }
+
+        /* --- CARDS FOR TEXT CONTENT --- */
+        .info-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 4px solid var(--primary);
+            padding: 25px;
+            margin-bottom: 20px;
+            border-radius: 0 10px 10px 0;
+            transition: 0.3s;
+        }
+        .info-card:hover { background: rgba(255, 255, 255, 0.06); }
+        .info-card h4 { color: white; margin-bottom: 10px; font-size: 1.2rem; }
+        .info-card p { color: #ccc; line-height: 1.6; }
+
+        .tag-container { text-align: center; margin-top: 30px; }
+        .tech-tag {
+            display: inline-block; padding: 8px 16px; margin: 5px;
+            border: 1px solid #333; border-radius: 20px; color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        /* --- LOADING SCREEN --- */
+        #loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+            transition: opacity 0.5s;
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 3px solid rgba(255,255,255,0.1);
+            border-top: 3px solid var(--primary); border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="ambient-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+    </div>
+
+    <header class="main-header">
+        <div class="brand">TRAFFIC<span>AI</span></div>
+        <div>
+            <a href="/login" class="btn-glow">LOGIN / DASHBOARD</a>
+        </div>
+    </header>
+
+    <div class="container">
+        
+        <div id="landing-view">
+            <div class="intro-section">
+                <h1 class="intro-title">Spatio-Temporal <span style="color:var(--secondary)">Intelligence</span></h1>
+                <p class="intro-sub">Next-generation traffic prediction replacing Graph Neural Networks with efficient ST-MLP architectures.</p>
+            </div>
+
+            <div class="menu-grid">
+                <div class="menu-item" onclick="showSection('needs')">
+                    <span class="menu-icon">📉</span>
+                    <h3>Project Needs</h3>
+                    <p>Why this system is critical</p>
+                </div>
+                
+                <div class="menu-item" onclick="showSection('importance')">
+                    <span class="menu-icon">⚡</span>
+                    <h3>Importance</h3>
+                    <p>Efficiency & Impact</p>
+                </div>
+                
+                <div class="menu-item" onclick="showSection('tech')">
+                    <span class="menu-icon">🛠️</span>
+                    <h3>Tools & Tech</h3>
+                    <p>Stack Implementation</p>
+                </div>
+                
+                <div class="menu-item" onclick="showSection('modules')">
+                    <span class="menu-icon">🧩</span>
+                    <h3>Modules</h3>
+                    <p>System Architecture</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="needs" class="content-section">
+            <button class="back-btn" onclick="goBack()">← Back to Menu</button>
+            <div class="section-header"><h2>Needs of the Project</h2></div>
+            
+            <div class="info-card">
+                <h4>Unpredictable Congestion</h4>
+                <p>Urban traffic is non-linear and chaotic. Traditional statistical models fail to capture sudden spikes caused by accidents or weather.</p>
+            </div>
+            <div class="info-card">
+                <h4>Hardware Limitations</h4>
+                <p>Traffic cameras (Edge Devices) have limited processing power. Complex Graph Neural Networks (GNNs) are too heavy to run directly on these devices.</p>
+            </div>
+            <div class="info-card">
+                <h4>Real-Time Latency</h4>
+                <p>Traffic light optimization requires milliseconds of latency. Cloud-based processing is often too slow; we need a lightweight model for instant prediction.</p>
+            </div>
+        </div>
+
+        <div id="importance" class="content-section">
+            <button class="back-btn" onclick="goBack()">← Back to Menu</button>
+            <div class="section-header"><h2 style="color: var(--secondary)">Importance</h2></div>
+            
+            <div class="info-card" style="border-left-color: var(--secondary)">
+                <h4>🚀 30x Faster Inference</h4>
+                <p>By replacing graph convolutions with pure MLP matrix operations, our ST-MLP model achieves 30x faster prediction speeds while maintaining accuracy.</p>
+            </div>
+            <div class="info-card" style="border-left-color: var(--secondary)">
+                <h4>🌍 Sustainability</h4>
+                <p>Efficient traffic flow reduces vehicle idling time. This directly translates to lower fuel consumption and reduced CO2 emissions in smart cities.</p>
+            </div>
+            <div class="info-card" style="border-left-color: var(--secondary)">
+                <h4>🔌 Infrastructure Agnostic</h4>
+                <p>Unlike GNNs, this model doesn't need a pre-defined graph of the road network during inference, making it incredibly easy to deploy in new cities.</p>
+            </div>
+        </div>
+
+        <div id="tech" class="content-section">
+            <button class="back-btn" onclick="goBack()">← Back to Menu</button>
+            <div class="section-header"><h2 style="color: #9d4edd">Tools & Technologies</h2></div>
+            
+            <div style="text-align: center; margin-bottom: 40px;">
+                <h3 style="color:white; margin-bottom:20px;">Backend & AI</h3>
+                <span class="tech-tag">Python 3.9+</span>
+                <span class="tech-tag">PyTorch</span>
+                <span class="tech-tag">Flask</span>
+                <span class="tech-tag">NumPy & Pandas</span>
+            </div>
+
+            <div style="text-align: center;">
+                <h3 style="color:white; margin-bottom:20px;">Frontend & Visualization</h3>
+                <span class="tech-tag">HTML5 / CSS3</span>
+                <span class="tech-tag">Leaflet.js (Interactive Maps)</span>
+                <span class="tech-tag">Matplotlib (Graphing)</span>
+                <span class="tech-tag">SQLite (Database)</span>
+            </div>
+            
+        </div>
+
+        <div id="modules" class="content-section">
+            <button class="back-btn" onclick="goBack()">← Back to Menu</button>
+            <div class="section-header"><h2>Modules Implemented</h2></div>
+            
+            <div class="info-card">
+                <h4>1. Authentication Module</h4>
+                <p>Handles secure user registration and login using SQLite and Flask sessions to protect the dashboard.</p>
+            </div>
+            <div class="info-card">
+                <h4>2. Spatial Interaction Module</h4>
+                <p>Integrates <strong>Leaflet.js</strong> to allow users to click real-world coordinates on a map and automatically identify the nearest traffic sensor.</p>
+            </div>
+            <div class="info-card">
+                <h4>3. Data Fusion Module</h4>
+                <p>Merges dynamic time-series flow data with static metadata (Latitude/Longitude) before feeding it into the AI model.</p>
+            </div>
+            <div class="info-card">
+                <h4>4. ST-MLP AI Module</h4>
+                <p>The core engine. Utilizes <strong>TempEncoder</strong> for time-series encoding and <strong>ST-Mixer</strong> layers to capture spatial dependencies without graphs.</p>
+            </div>
+            <div class="info-card">
+                <h4>5. Visualization Module</h4>
+                <p>Generates real-time plots comparing historical traffic data against the model's future predictions.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 1. Remove Loading Screen on Load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('loader');
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 500);
+            }, 800);
+        });
+
+        // 2. Navigation Functions
+        function showSection(id) {
+            // Hide the Landing View (Menu)
+            document.getElementById('landing-view').style.display = 'none';
+            
+            // Show the target section
+            document.getElementById(id).style.display = 'block';
+            
+            // Scroll to top for better UX
+            window.scrollTo(0,0);
+        }
+
+        function goBack() {
+            // Hide all content sections
+            const sections = document.querySelectorAll('.content-section');
+            sections.forEach(sec => sec.style.display = 'none');
+            
+            // Show Landing View
+            document.getElementById('landing-view').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
