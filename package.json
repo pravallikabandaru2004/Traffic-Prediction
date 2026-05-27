@@ -1,0 +1,11 @@
+{
+  "name": "traffic-prediction",
+  "version": "1.0.0",
+  "description": "Traffic Prediction Web Application",
+  "scripts": {
+    "start": "python app.py",
+    "dev": "python app.py",
+    "build": "echo No build step required for this Flask application",
+    "install-deps": "pip install flask torch numpy pandas matplotlib scikit-learn"
+  }
+}
